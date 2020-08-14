@@ -6,6 +6,7 @@ import pandas
 from bs4 import BeautifulSoup
 from bs4.element import Comment
 import urllib.request
+import sys
 
 
 headers = {"Accept-Language": "en-US, en;q=0.5"}
@@ -23,6 +24,7 @@ def find_link(url):
     links = []
     for link in txt.findAll('a'):
         links.append(link.get('href'))
+    print("got links")
     return r, links
 
 def contact_check(links):
@@ -30,18 +32,19 @@ def contact_check(links):
     for link in links:
         if str(link).casefold() == '/contact'.casefold() or str(link).casefold() == '/contact-us'.casefold() or str(link).casefold() == '/contactus'.casefold():
             url1 = url + link
+    if url1 != '':
+        print("got url")
     return url1
 
 def save_file(r, url):
-    body = urllib.request.urlopen(url).read()
-    soup = BeautifulSoup(body, 'html.parser')
-    txt = soup.findALL(text=True)
-    visible_texts = filter(tag_visible, txt) 
+    txt = r.text
+    visible_texts = filter(tag_visible, txt)
+    print(str(visible_texts))
     mail_list = re.findall('[a-z0-9_\-\.]+@[a-z\.]+\.[a-z]{2,3}', str(visible_texts))
+    print(mail_list)
     phone = re.findall('(\+(\d\-\ )?\d{2,3}[\s\-]?)?(\d{10}|(\(\d{3}\)([\s\-]?)\d{3}\5\d{4})|(\d{3}([\s\-]?)\d{3}\7\d{4}))', str(visible_texts))
+    print(phone)
     dicn = {'link': url, 'email': mail_list, 'phone number': phone}
-    for i in dicn.keys():
-        print(dicn[i])
     df = pandas.DataFrame.from_dict(dicn, orient= 'index')
     df.transpose()
     df.to_csv('contact_info.csv')
@@ -61,15 +64,15 @@ if __name__ == "__main__":
             url = str(st.cell_value(i, 1))
     if url == '':
         print("URL Not Found!")
-        exit(0)
+        sys.exit(0)
     print(url)
     lin = []
-    ln = []
     url2 = ''
     url1 = ''
     flag = True
     response, lin = find_link(url)
     url1 = contact_check(lin)
+    ln = lin
     print(url1)
     if url1 != '':
         save_file(response, url1)
@@ -77,6 +80,7 @@ if __name__ == "__main__":
         while flag == True:
             for l in ln:
                 url2 = url + l
+                res = requests.get(url2, headers = headers)
                 print(url2)
                 if res.status_code == 404:
                     print("continue")
@@ -88,7 +92,7 @@ if __name__ == "__main__":
                         continue
                     else:
                         save_file(res, url2)
-                        print("broken")
+                        print("break")
                         break
             flag = False
-    exit(0)
+    sys.exit(0)
