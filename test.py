@@ -21,37 +21,35 @@ def tag_visible(element):
 def find_link(url):
     r = requests.get(url, headers = headers)
     #txt = BeautifulSoup(r.text, 'html.parser')
-    links = []
     links = re.findall('<a.*?href="(http.*?)".*?>', r.text)
     #for link in txt.findAll('a'):
-        #links.append(link.get('href'))
-    print("got links")
+    #    links.append(link.get('href'))
     print(links)
+    print("got links")
+    mail_list = re.findall(r'[a-z0-9_\-\.]+@[a-z\.]+\.[a-z]{2,3}', r.text)
+    print(mail_list)
+    phone = re.findall(r'(\+(\d\-\ )?\d{2,3}[\s\-]?)?(\d{10}|(\(\d{3}\)([\s\-]?)\d{3}\5\d{4})|(\d{3}([\s\-]?)\d{3}\7\d{4}))', r.text)
+    phone = list(x[2] for x in phone)
+    print(phone)
     return r, links
 
-def contact_check(url, links):
+def contact_check(links):
     url1 = ''
     for link in links:
         if str(link).casefold() == '/contact'.casefold() or str(link).casefold() == '/contact-us'.casefold() or str(link).casefold() == '/contactus'.casefold():
             url1 = url + link
-        elif str(link) == str(url+'/contact') or str(link) == str(url+'/contact-us') or str(link) == str(url+'/contactus'):
-            url1 = link
     if url1 != '':
         print("got url")
     return url1
 
-def save_file(url):
+def save_file(r, url):
     print(url)
-    r = requests.get(url, headers = headers)
-    #txt = r.text
-    #visible_texts = filter(tag_visible, txt)
-    #print(str(visible_texts))
-    mail_list = re.findall(r'[a-z0-9_\-\.]+@[a-z\.]+\.[a-z]{2,3}', str(r.text))
+    txt = r.text
+    visible_texts = filter(tag_visible, txt)
+    print(str(visible_texts))
+    mail_list = re.findall('[a-z0-9_\-\.]+@[a-z\.]+\.[a-z]{2,3}', str(visible_texts))
     print(mail_list)
-    #phone = re.findall(r'<.+?>.*?((\+(\d\-\ )?\d{2,3}[\s\-]?)?(\d{10}|(\(\d{3}\)([\s\-]?)\d{3}\6\d{4})|(\d{3}([\s\-]?)\d{3}\8\d{4}))).*?</.*?>', str(r.text))
-    #phone = list(x[2] for x in phone)
-    phone = re.findall(r'[:\+\][0-9]{3,5}[\ \-\][0-9]{4,6}[\ \-\][0-9]{5,6}', str(r.text))
-    #phone = re.findall(r'(\+(\d\-\ )?\d{2,3}[\s\-]?)?(\d{10}|(\(\d{3}\)([\s\-]?)\d{3}\5\d{4})|(\d{3}([\s\-]?)\d{3}\7\d{4})|(\d{4}[\s\-]?\d{4}))', str(r.text))
+    phone = re.findall('(\+(\d\-\ )?\d{2,3}[\s\-]?)?(\d{10}|(\(\d{3}\)([\s\-]?)\d{3}\5\d{4})|(\d{3}([\s\-]?)\d{3}\7\d{4}))', str(visible_texts))
     print(phone)
     dicn = {'link': url, 'email': mail_list, 'phone number': phone}
     df = pandas.DataFrame.from_dict(dicn, orient= 'index')
@@ -80,19 +78,17 @@ if __name__ == "__main__":
     url1 = ''
     flag = True
     response, lin = find_link(url)
-    print("url")
-    url1 = contact_check(url, lin)
-    print("url contact")
+    url1 = contact_check(lin)
     ln = lin
     print(url1)
     if url1 != '':
-        print("file to be saved")
-        save_file(url1)
+        save_file(response, url1)
     else:
         while flag == True:
             for l in ln:
-                url2 = url + l
-                print("getting response")
+                if(l == None):
+                    continue
+                url2 = l
                 res = requests.get(url2, headers = headers)
                 print(url2)
                 if res.status_code == 404:
@@ -100,11 +96,12 @@ if __name__ == "__main__":
                     continue
                 else:
                     res, ln = find_link(url2)
-                    url2 = contact_check(url2, ln)
+                    print(ln)
+                    url2 = contact_check(ln)
                     if url2 == '':
                         continue
                     else:
-                        save_file(url2)
+                        save_file(res, url2)
                         print("break")
                         break
             flag = False
